@@ -15,16 +15,20 @@
 std::map<std::tuple<uint8_t, uint8_t, uint8_t>, double> relative_luminance; 
 std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>> RelativeLuminances;
 
-double linearize(int c)
+double 
+linearize(
+	int c
+)
 {
 	return (c < 11) ? c / 3294.6 : std::pow((c + 14.025) / 269.025, 2.4);
 }
 
-void memoize()
+void 
+memoize()
 {
-    std::vector<double> values(256,0.0);
-    std::vector<double> coefficients = { 0.7152, 0.2126, 0.0722, 1.000 };
-    std::vector<double> linearized_components(4,0.0);
+	std::vector<double> values(256,0.0);
+	std::vector<double> coefficients = { 0.7152, 0.2126, 0.0722, 1.000 };
+	std::vector<double> linearized_components(4,0.0);
 	std::tuple<uint8_t,uint8_t,uint8_t> color;
 	double rl;
 	//memoize R, G, and B
@@ -35,23 +39,26 @@ void memoize()
 	
 	// Memoize relative luminance
 	for (int i = 0; i < 256; i++)
-    for (int j = 0; j < 256; j++)
-    for (int k = 0; k < 256; k++)
-    {
-        linearized_components = {values[i], values[j], values[k], 0.05};
+	for (int j = 0; j < 256; j++)
+	for (int k = 0; k < 256; k++)
+	{
+		linearized_components = {values[i], values[j], values[k], 0.05};
 		color = std::make_tuple((uint8_t)i,(uint8_t)j,(uint8_t)k);
-        rl =	std::inner_product(
-             coefficients.begin()
-            ,coefficients.end()
-            ,linearized_components.begin()
-            ,0
-        );
+		rl =	std::inner_product(
+			 coefficients.begin()
+			,coefficients.end()
+			,linearized_components.begin()
+			,0
+		);
 		relative_luminance[color] = rl;
 		RelativeLuminances[rl] = color;
-    }
+	}
 }
 
-uint8_t getChannelValue(std::string channel)
+uint8_t 
+getChannelValue(
+	std::string channel
+)
 {
 	uint8_t result;
 	
@@ -64,12 +71,13 @@ uint8_t getChannelValue(std::string channel)
 }
 
 struct Color_Pair{
-    std::tuple<uint8_t, uint8_t, uint8_t> 
+	std::tuple<uint8_t, uint8_t, uint8_t> 
 	first, 
 	second;
 };
 
-Color_Pair getColors()
+Color_Pair 
+getColors()
 {
 	uint8_t 	
 	R1 = getChannelValue("R1"),
@@ -99,7 +107,8 @@ getColor()
 	return std::make_tuple(G1, R1, B1);
 }
 
-void printColors(	 
+void 
+printColors(	 
 	 std::tuple<uint8_t,uint8_t,uint8_t> color1
 	,std::tuple<uint8_t,uint8_t,uint8_t> color2
 )
@@ -116,7 +125,8 @@ void printColors(
 	fflush(stdout);
 }
 
-void printColor(	 
+void 
+printColor(	 
 	 std::tuple<uint8_t,uint8_t,uint8_t> color
 )
 {
@@ -129,7 +139,8 @@ void printColor(
 	fflush(stdout);
 }
 
-double getRatio()
+double 
+getRatio()
 {
 	double result;
 	do {
@@ -140,14 +151,19 @@ double getRatio()
 	return result;
 }
 
-void swap(std::tuple<uint8_t,uint8_t,uint8_t> *x, std::tuple<uint8_t,uint8_t,uint8_t> *y)
+void 
+swap(
+	std::tuple<uint8_t,uint8_t,uint8_t> *x, 
+	std::tuple<uint8_t,uint8_t,uint8_t> *y
+)
 {
-    std::tuple<uint8_t,uint8_t,uint8_t> temp = *x;
-    *x = *y;
-    *y = temp;
+	std::tuple<uint8_t,uint8_t,uint8_t> temp = *x;
+	*x = *y;
+	*y = temp;
 }
 
-void findPair()
+void 
+findPair()
 {
 	// ratio ≥ rl1 / rl2
 	// ratio * rl2 ≥ rl1 ≥ rl2
@@ -156,40 +172,40 @@ void findPair()
 	ratio = getRatio(), 
 	minimum = DBL_MAX, 
 	current, obj;
-    
+	
 	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
-    rl1 = RelativeLuminances.lower_bound(ratio * 0.05),
-    rl2 = RelativeLuminances.begin(),
-    rl2_upper = RelativeLuminances.lower_bound((1.05/ratio)),
-    color1, 
+	rl1 = RelativeLuminances.lower_bound(ratio * 0.05),
+	rl2 = RelativeLuminances.begin(),
+	rl2_upper = RelativeLuminances.lower_bound((1.05/ratio)),
+	color1, 
 	color2;
 
-    rl2_upper++;
+	rl2_upper++;
 	// Checking til 1.05/ratio is enough 
 	// because 1.05 is the maximum contrast ratio
-    for(; rl2 != rl2_upper; rl2++)
-    {
+	for(; rl2 != rl2_upper; rl2++)
+	{
 		// Ideally, only the color that has a relative luminance of ratio * rl2 should be checked
 		// but ratio * rl2 being in RelativeLuminances isn't guranteed.
 		// so the colors that have relative luminances just above and below are checked.
 		obj = ratio * (rl2->first);
-        rl1 = RelativeLuminances.lower_bound(obj);
-        current = fabs(rl1->first - obj);
-        if(minimum > current)
-        {
-            minimum = current;
-            color1 = rl1;
-            color2 = rl2;
-        }
-        rl1--;
-        current = fabs(rl1->first - obj);
-        if(minimum > current)
-        {
-            minimum = current;
-            color1 = rl1;
-            color2 = rl2;
-        }
-    }
+		rl1 = RelativeLuminances.lower_bound(obj);
+		current = fabs(rl1->first - obj);
+		if(minimum > current)
+		{
+			minimum = current;
+			color1 = rl1;
+			color2 = rl2;
+		}
+		rl1--;
+		current = fabs(rl1->first - obj);
+		if(minimum > current)
+		{
+			minimum = current;
+			color1 = rl1;
+			color2 = rl2;
+		}
+	}
 	
 	printColors(
 		rl1->second,
@@ -197,7 +213,10 @@ void findPair()
 	);
 }
 
-void findPartner(std::tuple<uint8_t, uint8_t, uint8_t> color1)
+void 
+findPartner(
+	std::tuple<uint8_t, uint8_t, uint8_t> color1
+)
 {
 	std::tuple<uint8_t,uint8_t,uint8_t> 
 	color2;
@@ -272,7 +291,10 @@ findMidway(
 	holder;
 		
 	if(relative_luminance[color1] < relative_luminance[color2])
-		swap(&color1, &color2);
+		swap(
+			&color1, 
+			&color2
+		);
 	
 	holder = RelativeLuminances
 			 .lower_bound((relative_luminance[color1] - relative_luminance[color2]) / 2)
@@ -283,7 +305,8 @@ findMidway(
 }
 
 
-void getGradient(
+void 
+getGradient(
 	 std::tuple<uint8_t,uint8_t,uint8_t> color1
 	,std::tuple<uint8_t,uint8_t,uint8_t> color2
 )
@@ -294,7 +317,10 @@ void getGradient(
 	double 	rl1, rl2, ratio, 
 			minimum = DBL_MAX, current;
 	if(relative_luminance[color1] < relative_luminance[color2])
-		swap(&color1, &color2);
+		swap(
+			&color1, 
+			&color2
+		);
 	
 	std::tuple<uint8_t, uint8_t, uint8_t>
 	holder = findMidway(color1, color2);
@@ -308,25 +334,29 @@ void getGradient(
 	getGradient(holder, color2);
 }
 
-int main(void)
+int 
+main(
+	void
+)
 {
-	int choice = 9;
+	int 
+	choice = 9;
 	while(choice != 0)
 	{
 		system("cls");
 		printf("0: Exit\n");
-		printf("1: Find the 2 colors whose contrast ratio      \n");
-		printf("   is as close to the given one as possible    \n");
+		printf("1: Find the 2 colors whose contrast ratio	  \n");
+		printf("   is as close to the given one as possible	\n");
 		printf("2: Find the color that will make the contrast  \n");
-		printf("   ratio with the given color as close to      \n");
-		printf("   the given contrast ratio as possible        \n");
-		printf("3: Calculate the relative luminances and       \n");
-		printf("   contrast ratio of the 2 given colors        \n");
-		printf("4: Find the 3rd color whose relative           \n");
-		printf("   luminance is in between that of             \n");
-		printf("   the 2 given colors                          \n");
-		printf("5: Get colors for a smooth gradient            \n");
-		printf("   between the 2 given colors                  \n");
+		printf("   ratio with the given color as close to	  \n");
+		printf("   the given contrast ratio as possible		\n");
+		printf("3: Calculate the relative luminances and	   \n");
+		printf("   contrast ratio of the 2 given colors		\n");
+		printf("4: Find the 3rd color whose relative		   \n");
+		printf("   luminance is in between that of			 \n");
+		printf("   the 2 given colors						  \n");
+		printf("5: Get colors for a smooth gradient			\n");
+		printf("   between the 2 given colors				  \n");
 		printf("Enter your choice: ");
 		scanf("%d", &choice);
 		
