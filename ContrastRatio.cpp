@@ -325,8 +325,6 @@ getGradient(
 	std::tuple<uint8_t, uint8_t, uint8_t>
 	holder = findMidway(color1, color2);
 	
-	printColor(holder);
-	
 	if(color1 == holder || color2 == holder)
 		return;
 		
@@ -346,17 +344,17 @@ main(
 		system("cls");
 		printf("0: Exit\n");
 		printf("1: Find the 2 colors whose contrast ratio	  \n");
-		printf("   is as close to the given one as possible	\n");
-		printf("2: Find the color that will make the contrast  \n");
-		printf("   ratio with the given color as close to	  \n");
-		printf("   the given contrast ratio as possible		\n");
-		printf("3: Calculate the relative luminances and	   \n");
-		printf("   contrast ratio of the 2 given colors		\n");
-		printf("4: Find the 3rd color whose relative		   \n");
-		printf("   luminance is in between that of			 \n");
+		printf("   is as close to the given one as possible   \n");
+		printf("2: Find the color that will make the contrast \n");
+		printf("   ratio with the given color as close to     \n");
+		printf("   the given contrast ratio as possible       \n");
+		printf("3: Calculate the relative luminances and      \n");
+		printf("   contrast ratio of the 2 given colors	      \n");
+		printf("4: Find the 3rd color whose relative          \n");
+		printf("   luminance is in between that of            \n");
 		printf("   the 2 given colors						  \n");
-		printf("5: Get colors for a smooth gradient			\n");
-		printf("   between the 2 given colors				  \n");
+		printf("5: Get colors for a smooth gradient           \n");
+		printf("   between the 2 given colors                 \n");
 		printf("Enter your choice: ");
 		scanf("%d", &choice);
 		
