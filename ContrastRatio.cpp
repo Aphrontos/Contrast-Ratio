@@ -181,10 +181,10 @@ findPair()
 	rl2_upper = RelativeLuminances_2.lower_bound((1.05/ratio)),
 	color1, 
 	color2;
-
-	rl2_upper++;
+	
 	// Checking til 1.05/ratio is enough 
 	// because 1.05 is the maximum contrast ratio
+	rl2_upper++;
 	for(; rl2 != rl2_upper; rl2++)
 	{
 		// Ideally, only the color that has a relative luminance of ratio * rl2 should be checked
