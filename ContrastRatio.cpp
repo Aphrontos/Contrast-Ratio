@@ -9,8 +9,8 @@
 #include<vector>
 #include<string>
 
-std::map<std::tuple<uint8_t, uint8_t, uint8_t>, double> RelativeLuminances_1; 
-std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>> RelativeLuminances_2;
+std::map<std::tuple<uint8_t, uint8_t, uint8_t>, double> Colors_RelativeLuminances; 
+std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>> RelativeLuminances_Colors;
 
 double 
 linearize(
@@ -33,13 +33,13 @@ memoize()
 	
 	double rl;
 	
-	// Linearize
+	// Memoize linearized channel
 	for (int i = 0; i < 11; i++)
 		values[i] = i / 3294.6;
 	for (int i = 11; i < 256; i++)
 		values[i] = pow((i + 14.025) / 269.025, 2.4);
 	
-	// Memoize relative luminance
+	// Memoize relative luminances
 	for (int i = 0; i < 256; i++)
 	for (int j = 0; j < 256; j++)
 	for (int k = 0; k < 256; k++)
@@ -52,8 +52,8 @@ memoize()
 			,linearized.begin()
 			,0.0
 		);
-		RelativeLuminances_1[color] = rl;
-		RelativeLuminances_2[rl] = color;
+		Colors_RelativeLuminances[color] = rl;
+		RelativeLuminances_Colors[rl] = color;
 	}
 }
 
@@ -173,25 +173,26 @@ findPair()
 	double 
 	ratio = getRatio(), 
 	minimum = DBL_MAX, 
-	current, obj;
+	current, 
+	obj;
 	
 	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
 	rl1,
-	rl2 = RelativeLuminances_2.begin(),
-	rl2_upper = RelativeLuminances_2.lower_bound((1.05/ratio)),
+	rl2 = RelativeLuminances_Colors.begin(),
+	rl2_upper = RelativeLuminances_Colors.lower_bound((1.05/ratio)),
 	color1, 
 	color2;
-	
+
 	// Checking til 1.05/ratio is enough 
 	// because 1.05 is the maximum contrast ratio
 	rl2_upper++;
 	for(; rl2 != rl2_upper; rl2++)
 	{
 		// Ideally, only the color that has a relative luminance of ratio * rl2 should be checked
-		// but ratio * rl2 may not be in RelativeLuminances_2,
+		// but ratio * rl2 may not be in RelativeLuminances_Colors,
 		// so the colors that have relative luminances just above and below ratio * rl2 are checked.
 		obj = ratio * (rl2->first);
-		rl1 = RelativeLuminances_2.lower_bound(obj);
+		rl1 = RelativeLuminances_Colors.lower_bound(obj);
 		current = fabs(rl1->first - obj);
 		if(minimum > current)
 		{
@@ -222,19 +223,19 @@ findPartner(
 {
 	std::tuple<uint8_t,uint8_t,uint8_t> 
 	color2;
-	
+
 	double 
 	ratio = getRatio(),
-	rl1 = RelativeLuminances_1[color1];
+	rl1 = Colors_RelativeLuminances[color1];
 
 	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
-	rl2_upper = RelativeLuminances_2.lower_bound(rl1/ratio),
+	rl2_upper = RelativeLuminances_Colors.lower_bound(rl1/ratio),
 	rl2_lower = rl2_upper;
 	rl2_lower--;
 
 	color2 = (fabs(rl2_upper->first * ratio - rl1) < fabs(rl2_lower->first * ratio - rl1)) ? 
-			 RelativeLuminances_2[rl2_upper->first] : 
-			 RelativeLuminances_2[rl2_lower->first];
+			 RelativeLuminances_Colors[rl2_upper->first] : 
+			 RelativeLuminances_Colors[rl2_lower->first];
 	
 	printColors(
 		color1,
@@ -256,8 +257,8 @@ void calculate(
 	B2 = std::get<2>(color2);
 
 	double 	
-	rl1 = RelativeLuminances_1[color1], 
-	rl2 = RelativeLuminances_1[color2], 
+	rl1 = Colors_RelativeLuminances[color1], 
+	rl2 = Colors_RelativeLuminances[color2], 
 	minimum = DBL_MAX,
 	target_ratio = getRatio();
 	
@@ -290,15 +291,15 @@ findMidway(
 	std::tuple<uint8_t,uint8_t,uint8_t> color2
 )
 {
-	if(RelativeLuminances_1[color1] < RelativeLuminances_1[color2])
+	if(Colors_RelativeLuminances[color1] < Colors_RelativeLuminances[color2])
 		swap(
 			&color1, 
 			&color2
 		);
 
 	std::tuple<uint8_t,uint8_t,uint8_t>
-	holder = RelativeLuminances_2
-			 .lower_bound((RelativeLuminances_1[color1] - RelativeLuminances_1[color2]) / 2)
+	holder = RelativeLuminances_Colors
+			 .lower_bound((Colors_RelativeLuminances[color1] - Colors_RelativeLuminances[color2]) / 2)
 			 ->second;
 	
 	printColor(holder);
