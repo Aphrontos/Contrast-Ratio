@@ -228,15 +228,13 @@ findPartner(
 	rl1 = RelativeLuminances_1[color1];
 
 	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
-	rl2_iter = RelativeLuminances_2.lower_bound(rl1/ratio);
+	rl2_upper = RelativeLuminances_2.lower_bound(rl1/ratio),
+	rl2_lower = rl2_upper;
+	rl2_lower--;
 
-	double rl2_upper = rl2_iter->first;
-	rl2_iter--;
-	double rl2_lower = rl2_iter->first;
-
-	color2 = (fabs(rl2_upper * ratio - rl1) < fabs(rl2_lower * ratio - rl1)) ? 
-			 RelativeLuminances_2[rl2_upper] : 
-			 RelativeLuminances_2[rl2_lower];
+	color2 = (fabs(rl2_upper->first * ratio - rl1) < fabs(rl2_lower->first * ratio - rl1)) ? 
+			 RelativeLuminances_2[rl2_upper->first] : 
+			 RelativeLuminances_2[rl2_lower->first];
 	
 	printColors(
 		color1,
