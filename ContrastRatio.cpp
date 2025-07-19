@@ -227,13 +227,12 @@ findPartner(
 	ratio = getRatio(),
 	rl1 = RelativeLuminances_1[color1],
 	rl2 = RelativeLuminances_2.lower_bound(rl1/ratio)->first,
-	rl2_lower = rl2--,
 	minimum = DBL_MAX,
 	current;
 
-	color2 = (fabs(rl2 * ratio - rl1) < fabs(rl2_lower * ratio - rl1)) ? 
+	color2 = (fabs(rl2 * ratio - rl1) < fabs((rl2-1) * ratio - rl1)) ? 
 			 RelativeLuminances_2[rl2] : 
-			 RelativeLuminances_2[rl2_lower];
+			 RelativeLuminances_2[rl2-1];
 	
 	printColors(
 		color1,
