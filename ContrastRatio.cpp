@@ -225,14 +225,18 @@ findPartner(
 	
 	double 
 	ratio = getRatio(),
-	rl1 = RelativeLuminances_1[color1],
-	rl2 = RelativeLuminances_2.lower_bound(rl1/ratio)->first,
-	minimum = DBL_MAX,
-	current;
+	rl1 = RelativeLuminances_1[color1];
 
-	color2 = (fabs(rl2 * ratio - rl1) < fabs((rl2-1) * ratio - rl1)) ? 
-			 RelativeLuminances_2[rl2] : 
-			 RelativeLuminances_2[rl2-1];
+	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
+	rl2_iter = RelativeLuminances_2.lower_bound(rl1/ratio);
+
+	double rl2_upper = rl2_iter->first;
+	rl2_iter--;
+	double rl2_lower = rl2_iter->first;
+
+	color2 = (fabs(rl2_upper * ratio - rl1) < fabs(rl2_lower * ratio - rl1)) ? 
+			 RelativeLuminances_2[rl2_upper] : 
+			 RelativeLuminances_2[rl2_lower];
 	
 	printColors(
 		color1,
