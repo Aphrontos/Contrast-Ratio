@@ -176,7 +176,7 @@ findPair()
 	current, obj;
 	
 	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
-	rl1 = RelativeLuminances_2.lower_bound(ratio * 0.05),
+	rl1,
 	rl2 = RelativeLuminances_2.begin(),
 	rl2_upper = RelativeLuminances_2.lower_bound((1.05/ratio)),
 	color1, 
