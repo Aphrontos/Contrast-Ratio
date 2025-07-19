@@ -12,14 +12,7 @@
 #include<vector>
 #include<string>
 
-std::vector<std::vector<std::vector<double> > > relative_luminance(
-	256, std::vector<std::vector<double> >(
-		256, std::vector<double>(
-			256,0.0
-		)
-	)
-);
-
+std::map<std::tuple<uint8_t, uint8_t, uint8_t>, double> relative_luminance; 
 std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>> RelativeLuminances;
 
 double linearize(int c)
@@ -32,6 +25,8 @@ void memoize()
     std::vector<double> values(256,0.0);
     std::vector<double> coefficients = { 0.7152, 0.2126, 0.0722, 1.000 };
     std::vector<double> linearized_components(4,0.0);
+	std::tuple<uint8_t,uint8_t,uint8_t> color;
+	double rl;
 	//memoize R, G, and B
 	for (int i = 0; i < 11; i++)
 		values[i] = i / 3294.6;
@@ -44,19 +39,21 @@ void memoize()
     for (int k = 0; k < 256; k++)
     {
         linearized_components = {values[i], values[j], values[k], 0.05};
-        relative_luminance[i][j][k] =    std::inner_product(
+		color = std::make_tuple((uint8_t)i,(uint8_t)j,(uint8_t)k);
+        rl =	std::inner_product(
              coefficients.begin()
             ,coefficients.end()
             ,linearized_components.begin()
             ,0
         );
-		RelativeLuminances[relative_luminance[i][j][k]] = std::make_tuple((uint8_t)i,(uint8_t)j,(uint8_t)k);
+		relative_luminance[color] = rl;
+		RelativeLuminances[rl] = color;
     }
 }
 
-int getChannelValue(std::string channel)
+uint8_t getChannelValue(std::string channel)
 {
-	int result;
+	uint8_t result;
 	
 	do {
 		printf("%s: ", channel);
@@ -64,6 +61,72 @@ int getChannelValue(std::string channel)
 	} while(0 > result || result > 255);
 	
 	return result;
+}
+
+struct Color_Pair{
+    std::tuple<uint8_t, uint8_t, uint8_t> 
+	first, 
+	second;
+};
+
+Color_Pair getColors()
+{
+	uint8_t 	
+	R1 = getChannelValue("R1"),
+	G1 = getChannelValue("G1"),
+	B1 = getChannelValue("B1"),
+	R2 = getChannelValue("R2"),
+	G2 = getChannelValue("G2"),
+	B2 = getChannelValue("B2");
+	fflush(stdin);
+
+	Color_Pair colors;
+	
+	colors.first  = std::make_tuple(G1, R1, B1), 
+	colors.second = std::make_tuple(G2, R2, B2);
+	return colors;
+}
+
+std::tuple<uint8_t, uint8_t, uint8_t> 
+getColor()
+{
+	uint8_t 	
+	R1 = getChannelValue("R1"),
+	G1 = getChannelValue("G1"),
+	B1 = getChannelValue("B1");
+	fflush(stdin);
+
+	return std::make_tuple(G1, R1, B1);
+}
+
+void printColors(	 
+	 std::tuple<uint8_t,uint8_t,uint8_t> color1
+	,std::tuple<uint8_t,uint8_t,uint8_t> color2
+)
+{
+	printf(
+		"#%02X%02X%02X - #%02X%02X%02X\n", 
+		std::get<1>(color1), 
+		std::get<0>(color1), 
+		std::get<2>(color1),
+		std::get<1>(color2), 
+		std::get<0>(color2), 
+		std::get<2>(color2)
+	);
+	fflush(stdout);
+}
+
+void printColor(	 
+	 std::tuple<uint8_t,uint8_t,uint8_t> color
+)
+{
+	printf(
+		"#%02X%02X%02X\n", 
+		std::get<1>(color), 
+		std::get<0>(color), 
+		std::get<2>(color)
+	);
+	fflush(stdout);
 }
 
 double getRatio()
@@ -77,40 +140,39 @@ double getRatio()
 	return result;
 }
 
-void swap(char *x, char *y)
+void swap(std::tuple<uint8_t,uint8_t,uint8_t> *x, std::tuple<uint8_t,uint8_t,uint8_t> *y)
 {
-    int temp = *x;
+    std::tuple<uint8_t,uint8_t,uint8_t> temp = *x;
     *x = *y;
     *y = temp;
 }
 
-struct Color_Pair{
-    uint8_t G1; 
-    uint8_t R1; 
-    uint8_t B1;
-    uint8_t G2; 
-    uint8_t R2; 
-    uint8_t B2;
-};
-
 void findPair()
 {
-	// rl1 / rl2 ≥ ratio
-	// rl1 ≥ ratio * rl2
-	// relative_luminance[x0][x1][x2] ≥ ratio * relative_luminance[x3][x4][x5]
-	// relative_luminance[x0][x1][x2] - ratio * relative_luminance[x3][x4][x5] ≥ 0
-	double ratio = getRatio(), minimum = DBL_MAX, current, obj;
-    std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
+	// ratio ≥ rl1 / rl2
+	// ratio * rl2 ≥ rl1 ≥ rl2
+	// |ratio * rl2 - rl1| ≥ 0
+	double 
+	ratio = getRatio(), 
+	minimum = DBL_MAX, 
+	current, obj;
+    
+	std::map<double, std::tuple<uint8_t, uint8_t, uint8_t>>::iterator
     rl1 = RelativeLuminances.lower_bound(ratio * 0.05),
     rl2 = RelativeLuminances.begin(),
-    rl2lb = RelativeLuminances.lower_bound((1.05/ratio)),
-    color1, color2;
-	Color_Pair result;
+    rl2_upper = RelativeLuminances.lower_bound((1.05/ratio)),
+    color1, 
+	color2;
 
-    rl2lb++;
-    for(; rl2 != rl2lb; rl2++)
+    rl2_upper++;
+	// Checking til 1.05/ratio is enough 
+	// because 1.05 is the maximum contrast ratio
+    for(; rl2 != rl2_upper; rl2++)
     {
-        obj = ratio * (rl2->first);
+		// Ideally, only the color that has a relative luminance of ratio * rl2 should be checked
+		// but ratio * rl2 being in RelativeLuminances isn't guranteed.
+		// so the colors that have relative luminances just above and below are checked.
+		obj = ratio * (rl2->first);
         rl1 = RelativeLuminances.lower_bound(obj);
         current = fabs(rl1->first - obj);
         if(minimum > current)
@@ -128,68 +190,56 @@ void findPair()
             color2 = rl2;
         }
     }
-
-	result.G1 = std::get<0>(rl1->second);
-	result.R1 = std::get<1>(rl1->second);
-	result.B1 = std::get<2>(rl1->second);
-	result.G2 = std::get<0>(rl2->second);
-	result.R2 = std::get<1>(rl2->second);
-	result.B2 = std::get<2>(rl2->second);
 	
-	printf("#%02X%02X%02X - #%02X%02X%02X\n", result.R1, result.G1, result.B1, result.R2, result.G2, result.B2);
+	printColors(
+		rl1->second,
+		rl2->second
+	);
 }
 
-void findPartner()
+void findPartner(std::tuple<uint8_t, uint8_t, uint8_t> color1)
 {
-	double 	rl1, ratio = getRatio(), 
-			minimum = DBL_MAX, current;
-	int 	R1 = getChannelValue("R1"),
-			G1 = getChannelValue("G1"),
-			B1 = getChannelValue("B1"),
-			/*\                                 /*\
-			|*|---------------------------------|*|
-			|*| x[0][0] - index 0  x[1][0] - G2 |*|
-			|*| x[0][1] - index 1  x[1][1] - R2 |*|
-			|*| x[0][2] - index 2  x[1][2] - B2 |*|
-			|*|---------------------------------|*|
-			\*/                               /*\*/
-			x[2][3];
+	std::tuple<uint8_t,uint8_t,uint8_t> 
+	color2;
 	
-	rl1 = relative_luminance[R1][G1][B1];
-	for(x[0][0] = 0; x[0][0] < 256; x[0][0]++) 
-	for(x[0][1] = 0; x[0][1] < 256; x[0][1]++) 
-	for(x[0][2] = 0; x[0][2] < 256; x[0][2]++)
-	{	
-		current = fabs(rl1 - ratio * relative_luminance[x[0][0]][x[0][1]][x[0][2]]);
-		
-		if (minimum > current)
-		{
-			minimum = current;
-			for(int i = 0; i < 3; i++)
-				x[1][i] = x[0][i];
-			//printf("\r#%02X%02X%02X - #%02X%02X%02X", R1, G1, B1, R2, G2, B2);
-			//fflush(stdout);
-		}
-	}
+	double 
+	ratio = getRatio(),
+	rl1 = relative_luminance[color1],
+	rl2 = RelativeLuminances.lower_bound(rl1/ratio)->first,
+	rl2_lower = rl2--,
+	minimum = DBL_MAX,
+	current;
+
+	color2 = (fabs(rl2 * ratio - rl1) < fabs(rl2_lower * ratio - rl1)) ? 
+			 RelativeLuminances[rl2] : 
+			 RelativeLuminances[rl2_lower];
 	
-	printf("#%02X%02X%02X - #%02X%02X%02X\n", R1, G1, B1, x[1][0], x[1][1], x[1][2]);
+	printColors(
+		color1,
+		color2
+	);
 }
 
-void calculate()
+void calculate(	 
+	 std::tuple<uint8_t,uint8_t,uint8_t> color1
+	,std::tuple<uint8_t,uint8_t,uint8_t> color2
+)
 {
-	double 	rl1, rl2, minimum = DBL_MAX,
-			target_ratio = getRatio();
-	int 	R1 = getChannelValue("R1"),
-			G1 = getChannelValue("G1"),
-			B1 = getChannelValue("B1"),
-			R2 = getChannelValue("R2"),
-			G2 = getChannelValue("G2"),
-			B2 = getChannelValue("B2");
+	uint8_t 	
+	R1 = std::get<1>(color1),
+	G1 = std::get<0>(color1),
+	B1 = std::get<2>(color1),
+	R2 = std::get<1>(color2),
+	G2 = std::get<0>(color2),
+	B2 = std::get<2>(color2);
+
+	double 	
+	rl1 = relative_luminance[color1], 
+	rl2 = relative_luminance[color2], 
+	minimum = DBL_MAX,
+	target_ratio = getRatio();
 	
-	rl1 = relative_luminance[G1][R1][B1];
-	rl2 = relative_luminance[G2][R2][B2];
-	
-	printf("#%02X%02X%02X\n", R1, G1, B1);
+	printColor(color1);
 	
 	printf("linearize(R1) = %.20f\n", linearize(R1));
 	printf("linearize(G1) = %.20f\n", linearize(G1));
@@ -197,7 +247,7 @@ void calculate()
 	
 	printf("Relative Luminance: %.20f\n", rl1);
 	
-	printf("#%02X%02X%02X\n", R2, G2, B2);
+	printColor(color2);
 	
 	printf("linearize(R2) = %.20f\n", linearize(R2));
 	printf("linearize(G2) = %.20f\n", linearize(G2));
@@ -209,102 +259,53 @@ void calculate()
 	
 	printf("Calculated Contrast Ratio: %.20f\n", (rl1 > rl2) ? (rl1 / rl2) : (rl2 / rl1));
 	
-	printf("objective: %.20f\n", rl1 - target_ratio * rl2);
+	printf("objective: %.20f\n", fabs(rl1 - target_ratio * rl2));
 }
 
-void findMidway()
+std::tuple<uint8_t,uint8_t,uint8_t> 
+findMidway(	 
+	 std::tuple<uint8_t,uint8_t,uint8_t> color1
+	,std::tuple<uint8_t,uint8_t,uint8_t> color2
+)
 {
-	double 	rl1, rl2, ratio, 
-			minimum = DBL_MAX, current;
-	char 	R1 = getChannelValue("R1"),
-			G1 = getChannelValue("G1"),
-			B1 = getChannelValue("B1"),
-			R2 = getChannelValue("R2"),
-			G2 = getChannelValue("G2"),
-			B2 = getChannelValue("B2"),
-			/*\                                 /*\
-			|*|---------------------------------|*|
-			|*| x[0][0] - index 0  x[1][0] - G3 |*|
-			|*| x[0][1] - index 1  x[1][1] - R3 |*|
-			|*| x[0][2] - index 2  x[1][2] - B3 |*|
-			|*|---------------------------------|*|
-			\*/                               /*\*/
-			x[2][3];
+	std::tuple<uint8_t,uint8_t,uint8_t>
+	holder;
 		
-	if(relative_luminance[G1][R1][B1] < relative_luminance[G2][R2][B2])
-	{
-		swap(&G1, &G2);
-		swap(&R1, &R2);
-		swap(&B1, &B2);
-	}
+	if(relative_luminance[color1] < relative_luminance[color2])
+		swap(&color1, &color2);
 	
-	rl1 = (relative_luminance[G1][R1][B1] - relative_luminance[G2][R2][B2]) / 2;	
-	for (x[0][0] = G1; x[0][0] < G1+1; x[0][0]++) 
-	for (x[0][1] = R1; x[0][1] < R1+1; x[0][1]++) 
-	for (x[0][2] = B1; x[0][2] < B1+1; x[0][2]++)
-	{
-		current = fabs(rl1 - relative_luminance[x[0][0]][x[0][1]][x[0][2]]);
-		
-		if (minimum > current)
-		{
-			minimum = current;
-			for(int i = 0; i < 3; i++)
-				x[1][i] = x[0][i];
-		}
-	}
+	holder = RelativeLuminances
+			 .lower_bound((relative_luminance[color1] - relative_luminance[color2]) / 2)
+			 ->second;
 	
-	printf("\n#%02X%02X%02X\n", x[1][0], x[1][1], x[1][2]);
+	printColor(holder);
+	return holder;
 }
 
 
-void getGradient(char G1, char R1, char B1, char G2, char R2, char B2)
+void getGradient(
+	 std::tuple<uint8_t,uint8_t,uint8_t> color1
+	,std::tuple<uint8_t,uint8_t,uint8_t> color2
+)
 {
-	if(G1 == G2 && R1 == R2 && B1 == B2)
+	if(color1 == color2)
 		return;
 		
 	double 	rl1, rl2, ratio, 
 			minimum = DBL_MAX, current;
-			/*\                                 /*\
-			|*|---------------------------------|*|
-			|*| x[0][0] - index 0  x[1][0] - G3 |*|
-			|*| x[0][1] - index 1  x[1][1] - R3 |*|
-			|*| x[0][2] - index 2  x[1][2] - B3 |*|
-			|*|---------------------------------|*|
-			\*/                               /*\*/
-	char	x[2][3];
+	if(relative_luminance[color1] < relative_luminance[color2])
+		swap(&color1, &color2);
 	
-	if(relative_luminance[G1][R1][B1] < relative_luminance[G2][R2][B2])
-	{
-		swap(&G1, &G2);
-		swap(&R1, &R2);
-		swap(&B1, &B2);
-	}
+	std::tuple<uint8_t, uint8_t, uint8_t>
+	holder = findMidway(color1, color2);
 	
-	rl1 = (relative_luminance[G1][R1][B1] - relative_luminance[G2][R2][B2]) / 2;	
-	for (x[0][0] = G1; x[0][0] < G1+1; x[0][0]++) 
-	for (x[0][1] = R1; x[0][1] < R1+1; x[0][1]++) 
-	for (x[0][2] = B1; x[0][2] < B1+1; x[0][2]++)
-	{
-		current = fabs(rl1 - relative_luminance[x[0][0]][x[0][1]][x[0][2]]);
-		
-		if (minimum > current)
-		{
-			minimum = current;
-			for(int i = 0; i < 3; i++)
-				x[1][i] = x[0][i];
-		}
-	}
+	printColor(holder);
 	
-	printf("\n#%02X%02X%02X\n", x[1][0], x[1][1], x[1][2]);
-	
-	
-	if(G1 == x[1][0] && R1 == x[1][1] && B1 == x[1][2])
-		return;
-	if(G2 == x[1][0] && R2 == x[1][1] && B2 == x[1][2])
+	if(color1 == holder || color2 == holder)
 		return;
 		
-	getGradient(G1, R1, B1, x[1][0], x[1][1], x[1][2]);
-	getGradient(x[1][0], x[1][1], x[1][2], G2, R2, B2);
+	getGradient(color1,holder);
+	getGradient(holder, color2);
 }
 
 int main(void)
@@ -342,24 +343,24 @@ int main(void)
 				findPair();
 				break;
 			case 2:
-				findPartner();
+				std::tuple<uint8_t, uint8_t, uint8_t>
+				color = getColor();
+				findPartner(color);
 				break;
 			case 3:
-				calculate();
+				Color_Pair colors = getColors();
+				calculate(colors.first, colors.second);
 				break;
 			case 4:
-				findMidway();
+				Color_Pair colors = getColors();
+				findMidway(colors.first, colors.second);
 				break;
 			case 5:
-				char 	R1 = getChannelValue("R1"),
-						G1 = getChannelValue("G1"),
-						B1 = getChannelValue("B1"),
-						R2 = getChannelValue("R2"),
-						G2 = getChannelValue("G2"),
-						B2 = getChannelValue("B2");
-				printf("%d, %d, %d, ", R1, G1, B1);
-				getGradient(G1, R1, B1, G2, R2, B2);
-				printf("%d, %d, %d, ", R2, G2, B2);
+				Color_Pair colors = getColors();
+				printColor(colors.first);
+				getGradient(colors.first, colors.second);
+				printColor(colors.second);
+				fflush(stdout);
 				break;
 		}
 		system("pause");
