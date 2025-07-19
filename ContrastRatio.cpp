@@ -3,6 +3,7 @@
 #include<cstdint>
 #include<cstdio>
 #include<ctime>
+#include<fstream>
 
 #include<map>
 #include<numeric>
@@ -31,7 +32,8 @@ memoize()
 	std::tuple<uint8_t,uint8_t,uint8_t> 
 	color;
 	
-	double rl;
+	double 
+	relative_luminance;
 	
 	// Memoize linearized channel
 	for (int i = 0; i < 11; i++)
@@ -46,14 +48,14 @@ memoize()
 	{
 		linearized = {values[i], values[j], values[k], 0.05};
 		color = std::make_tuple((uint8_t)i,(uint8_t)j,(uint8_t)k);
-		rl = std::inner_product(
+		relative_luminance = std::inner_product(
 			 coefficients.begin()
 			,coefficients.end()
 			,linearized.begin()
 			,0.0
 		);
-		Colors_RelativeLuminances[color] = rl;
-		RelativeLuminances_Colors[rl] = color;
+		Colors_RelativeLuminances[color] = relative_luminance;
+		RelativeLuminances_Colors[relative_luminance] = color;
 	}
 }
 
@@ -325,6 +327,29 @@ getGradient(
 	getGradient(holder, color2);
 }
 
+void createCSV()
+{
+    std::ofstream file;
+    file.open ("GRB Colors sorted by Relative Luminance.csv");
+    file << "Relative Luminance,Color\n";
+    for(const auto& element : RelativeLuminances_Colors)
+        file << 
+        element.first << ",#" << 
+        std::format("%02X", std::get<0>(element.second)) <<
+        std::format("%02X", std::get<1>(element.second)) <<
+        std::format("%02X", std::get<2>(element.second)) << "\n";
+    file.close();
+    file.open ("Relative Luminances sorted by GRB Colors.csv");
+    file << "Color,Relative Luminance\n";
+    for(const auto& element : Colors_RelativeLuminances)
+        file << "#" << 
+        std::format("%02X", std::get<0>(element.first)) <<
+        std::format("%02X", std::get<1>(element.first)) <<
+        std::format("%02X", std::get<2>(element.first)) << 
+        "," << element.second << "\n";
+    file.close();
+}
+
 int 
 main(
 	void
@@ -348,6 +373,8 @@ main(
 		printf("   the 2 given colors						  \n");
 		printf("5: Get colors for a smooth gradient           \n");
 		printf("   between the 2 given colors                 \n");
+		printf("6: Create 2 CSVs, one sorted by color,        \n");
+		printf("   the other by relative luminance            \n");
 		printf("Enter your choice: ");
 		scanf("%d", &choice);
 		
@@ -382,6 +409,8 @@ main(
 				getGradient(colors.first, colors.second);
 				printColor(colors.second);
 				break;
+			case 6:
+				createCSV();
 		}
 		system("pause");
 	}
